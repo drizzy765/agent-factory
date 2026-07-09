@@ -17,7 +17,10 @@ async def execute_agent(agent_profile: str, user_payload: dict):
         persona = factory_instance.profile.get("personality")
         allocated_tools = factory_instance.profile.get("tools")
 
-        # Next Step Implementation: Pass state loop directly to LangGraph router
+        # Step 3: Run the reasoning loop via LangGraph
+        user_input = user_payload.get("input", "")
+        output = factory_instance.run(user_input)
+
         return {
             "status": "Success",
             "activated_profile": agent_profile,
@@ -25,7 +28,7 @@ async def execute_agent(agent_profile: str, user_payload: dict):
                 "role": persona.get("role"),
                 "allocated_tools_count": len(allocated_tools)
             },
-            "output": "Engine ready. Injecting tool execution contexts."
+            "output": output
         }
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"Profile '{agent_profile}' does not exist on this floor.")

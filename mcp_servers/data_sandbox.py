@@ -1,5 +1,6 @@
 # Azure ACA Dynamic Sessions Python Execution
 import os
+import sys
 import subprocess
 from mcp.server.fastmcp import FastMCP
 
@@ -31,7 +32,7 @@ def execute_secure_python(code: str) -> str:
         try:
             # Execute the code passed by the LLM
             result = subprocess.check_output(
-                ["python", "-c", code], 
+                [sys.executable, "-c", code], 
                 stderr=subprocess.STDOUT, 
                 text=True, 
                 timeout=10 # Prevent infinite loops

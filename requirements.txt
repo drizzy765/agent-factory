@@ -8,3 +8,5 @@ langgraph>=0.0.15
 langchain-openai>=0.1.0
 langchain-aws>=0.1.0
 pyyaml>=6.0.1
+langchain-groq>=0.1.0
+pydantic-settings>=2.0.0
