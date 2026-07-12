@@ -1,15 +1,26 @@
 import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 from core.chassis import AgentChassis
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
+from langchain_openai import ChatOpenAI
+from core.config import settings
 
 # Load environment variables from .env file at startup
 load_dotenv()
 
 app = FastAPI(title="AI Agent Factory Core Runtime Engine")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Define API Key header security scheme
 API_KEY_NAME = "X-Factory-API-Key"
@@ -41,9 +52,39 @@ class AgentRoute(BaseModel):
 async def factory_supervisor(user_payload: dict):
     user_input = user_payload.get("input", "")
     
-    # 1. Upgrade to the active 70b model for better logical deduction
-    llm = ChatGroq(model="llama-3.3-70b-versatile", temperature=0) 
-    structured_router = llm.with_structured_output(AgentRoute, method="json_mode")
+    # 1. Initialize robust LLM routing with fallbacks for supervisor
+    primary_llm = ChatGroq(
+        model="llama-3.1-8b-instant",
+        temperature=0,
+        api_key=settings.GROQ_API_KEY,
+        max_retries=0
+    )
+    
+    fallbacks = []
+    if settings.CEREBRAS_API_KEY:
+        cerebras_llm = ChatOpenAI(
+            model="llama3.1-70b",
+            base_url="https://api.cerebras.ai/v1",
+            api_key=settings.CEREBRAS_API_KEY,
+            temperature=0
+        )
+        fallbacks.append(cerebras_llm)
+        
+    if settings.OPENROUTER_API_KEY:
+        openrouter_llm = ChatOpenAI(
+            model="meta-llama/llama-3.3-70b-instruct",
+            base_url="https://openrouter.ai/api/v1",
+            api_key=settings.OPENROUTER_API_KEY,
+            temperature=0
+        )
+        fallbacks.append(openrouter_llm)
+        
+    if fallbacks:
+        robust_llm = primary_llm.with_fallbacks(fallbacks)
+    else:
+        robust_llm = primary_llm
+
+    structured_router = robust_llm.with_structured_output(AgentRoute, method="json_mode")
     
     # 2. Tighten the prompt to focus on actions, not buzzwords
     routing_prompt = f"""You are the Factory Floor Supervisor. 

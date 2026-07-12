@@ -19,5 +19,6 @@ class Settings(BaseSettings):
     # Multi-Cloud Model Routing Fallbacks
     GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     OPENROUTER_API_KEY: str = os.getenv("OPENROUTER_API_KEY", "")
+    CEREBRAS_API_KEY: str = os.getenv("CEREBRAS_API_KEY", "")
 
 settings = Settings()

@@ -33,28 +33,41 @@ class AgentChassis:
             return yaml.safe_load(file)
 
     def _initialize_llm_routing(self):
-        # AI-300 Standard Router: Default to zero-cost Azure-native tier/fallback models
-        # Also check if GROQ_API_KEY is provided for local dev bypass
-        tier = self.profile.get("tier", "standard")
-        if settings.GROQ_API_KEY:
-            return ChatGroq(
-                model="llama-3.3-70b-versatile",
-                api_key=settings.GROQ_API_KEY
+        # Initialize primary engine (Groq) with max_retries=0 for instant failure on 429
+        primary_llm = ChatGroq(
+            model="llama-3.3-70b-versatile",
+            temperature=0,
+            api_key=settings.GROQ_API_KEY,
+            max_retries=0
+        )
+        
+        # Build fallbacks dynamically based on environment keys for graceful degradation
+        fallbacks = []
+        
+        if settings.CEREBRAS_API_KEY:
+            cerebras_llm = ChatOpenAI(
+                model="llama3.1-70b",
+                base_url="https://api.cerebras.ai/v1",
+                api_key=settings.CEREBRAS_API_KEY,
+                temperature=0
             )
-        elif tier == "standard":
-            return ChatOpenAI(
-                model="gpt-4o-mini",
-                openai_api_base="https://any-free-fallback-route-or-azure-foundry-endpoint",
-                api_key=settings.OPENROUTER_API_KEY
+            fallbacks.append(cerebras_llm)
+            
+        if settings.OPENROUTER_API_KEY:
+            openrouter_llm = ChatOpenAI(
+                model="meta-llama/llama-3.3-70b-instruct",
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+                temperature=0
             )
-        # Premium Track: Route on-demand analytical workloads straight to AWS Bedrock
-        elif tier == "premium":
-            return ChatBedrock(
-                model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
-                region_name=settings.AWS_REGION,
-                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY
-            )
+            fallbacks.append(openrouter_llm)
+            
+        if fallbacks:
+            robust_llm = primary_llm.with_fallbacks(fallbacks)
+        else:
+            robust_llm = primary_llm
+            
+        return robust_llm
 
     def _resolve_tools(self):
         resolved = []
