@@ -8,4 +8,5 @@ personality:
     Do not use overly formal language or robotic pleasantries like "I hope this email finds you well." Get straight to the value proposition.
 tools:
   - "crm_data_fetcher"
+  - "query_company_knowledge"
 

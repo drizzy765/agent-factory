@@ -1,8 +1,11 @@
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
+import io
+import pypdf
+from core.rag_engine import add_document
 from core.chassis import AgentChassis
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
@@ -123,6 +126,48 @@ async def factory_supervisor(user_payload: dict):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Supervisor Routing Failed: {str(e)}")
+
+@app.post("/upload", dependencies=[Depends(verify_api_key)])
+async def upload_document(file: UploadFile = File(...)):
+    filename = file.filename
+    if not (filename.endswith(".txt") or filename.endswith(".csv") or filename.endswith(".pdf")):
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported file format. Please upload a .txt, .csv, or .pdf file."
+        )
+        
+    try:
+        content = await file.read()
+        
+        if filename.endswith(".pdf"):
+            pdf_file = io.BytesIO(content)
+            reader = pypdf.PdfReader(pdf_file)
+            text = ""
+            for page in reader.pages:
+                page_text = page.extract_text()
+                if page_text:
+                    text += page_text + "\n"
+        else:
+            text = content.decode("utf-8", errors="ignore")
+            
+        if not text.strip():
+            raise HTTPException(
+                status_code=400,
+                detail="File content is empty or could not be parsed."
+            )
+            
+        add_document(text, filename)
+        
+        return {
+            "status": "Success",
+            "filename": filename,
+            "message": f"Successfully parsed and indexed {filename} into company knowledge base."
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to process and index file: {str(e)}"
+        )
 
 @app.get("/health")
 def health_check():

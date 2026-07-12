@@ -9,6 +9,7 @@ from langgraph.prebuilt import create_react_agent
 from core.config import settings
 from tools.crm_data_fetcher import crm_data_fetcher
 from tools.pii_regex_masker import pii_regex_masker
+from tools.query_company_knowledge import query_company_knowledge
 from mcp_servers.data_sandbox import execute_secure_python
 
 class AgentChassis:
@@ -24,7 +25,8 @@ class AgentChassis:
         self.tool_registry = {
             "execute_secure_python": execute_secure_python,
             "crm_data_fetcher": crm_data_fetcher,
-            "pii_regex_masker": pii_regex_masker
+            "pii_regex_masker": pii_regex_masker,
+            "query_company_knowledge": query_company_knowledge
         }
 
     def _load_profile(self, profile_name: str) -> Dict[str, Any]:

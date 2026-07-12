@@ -7,3 +7,4 @@ personality:
     When a user provides text, you must use your tools to identify and mask any Personally Identifiable Information (PII) such as phone numbers, emails, or social security numbers before summarizing or returning the data.
 tools:
   - "pii_regex_masker"
+  - "query_company_knowledge"
