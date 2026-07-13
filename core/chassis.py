@@ -17,9 +17,9 @@ class AgentChassis:
     Unified engine infrastructure. Spawns distinct persona states
     by swapping runtime configurations dynamically without mutating code.
     """
-    def __init__(self, profile_name: str):
+    def __init__(self, profile_name: str, client_openrouter_key: str = None, client_cerebras_key: str = None):
         self.profile = self._load_profile(profile_name) or {}
-        self.engine = self._initialize_llm_routing()
+        self.engine = self._initialize_llm_routing(client_openrouter_key, client_cerebras_key)
         
         # Tool registry dictionary mapping strings to actual tool functions
         self.tool_registry = {
@@ -34,7 +34,7 @@ class AgentChassis:
         with open(profile_path, "r") as file:
             return yaml.safe_load(file)
 
-    def _initialize_llm_routing(self):
+    def _initialize_llm_routing(self, client_openrouter_key: str = None, client_cerebras_key: str = None):
         # Initialize primary engine (Groq) with max_retries=0 for instant failure on 429
         primary_llm = ChatGroq(
             model="llama-3.3-70b-versatile",
@@ -46,20 +46,24 @@ class AgentChassis:
         # Build fallbacks dynamically based on environment keys for graceful degradation
         fallbacks = []
         
-        if settings.CEREBRAS_API_KEY:
+        # Check client Cerebras key, fallback to settings
+        cerebras_key = client_cerebras_key if client_cerebras_key else settings.CEREBRAS_API_KEY
+        if cerebras_key:
             cerebras_llm = ChatOpenAI(
                 model="llama-3.1-70b",
                 base_url="https://api.cerebras.ai/v1",
-                api_key=settings.CEREBRAS_API_KEY,
+                api_key=cerebras_key,
                 temperature=0
             )
             fallbacks.append(cerebras_llm)
             
-        if settings.OPENROUTER_API_KEY:
+        # Check client OpenRouter key, fallback to settings
+        openrouter_key = client_openrouter_key if client_openrouter_key else settings.OPENROUTER_API_KEY
+        if openrouter_key:
             openrouter_llm = ChatOpenAI(
                 model="meta-llama/llama-3.3-70b-instruct",
                 base_url="https://openrouter.ai/api/v1",
-                api_key=settings.OPENROUTER_API_KEY,
+                api_key=openrouter_key,
                 temperature=0
             )
             fallbacks.append(openrouter_llm)

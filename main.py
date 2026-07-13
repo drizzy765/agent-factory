@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile
+from fastapi import FastAPI, HTTPException, Depends, status, File, UploadFile, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
 import io
@@ -22,7 +22,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "X-Client-OpenRouter-Key", "X-Client-Cerebras-Key"],
 )
 
 # Define API Key header security scheme
@@ -52,8 +52,12 @@ class AgentRoute(BaseModel):
     )
 
 @app.post("/supervisor", dependencies=[Depends(verify_api_key)])
-async def factory_supervisor(user_payload: dict):
+async def factory_supervisor(user_payload: dict, request: Request):
     user_input = user_payload.get("input", "")
+    
+    # Extract client headers if present
+    client_openrouter_key = request.headers.get("X-Client-OpenRouter-Key")
+    client_cerebras_key = request.headers.get("X-Client-Cerebras-Key")
     
     # 1. Initialize robust LLM routing with fallbacks for supervisor
     primary_llm = ChatGroq(
@@ -64,20 +68,22 @@ async def factory_supervisor(user_payload: dict):
     )
     
     fallbacks = []
-    if settings.CEREBRAS_API_KEY:
+    cerebras_key = client_cerebras_key if client_cerebras_key else settings.CEREBRAS_API_KEY
+    if cerebras_key:
         cerebras_llm = ChatOpenAI(
             model="llama-3.1-70b",
             base_url="https://api.cerebras.ai/v1",
-            api_key=settings.CEREBRAS_API_KEY,
+            api_key=cerebras_key,
             temperature=0
         )
         fallbacks.append(cerebras_llm)
         
-    if settings.OPENROUTER_API_KEY:
+    openrouter_key = client_openrouter_key if client_openrouter_key else settings.OPENROUTER_API_KEY
+    if openrouter_key:
         openrouter_llm = ChatOpenAI(
             model="meta-llama/llama-3.3-70b-instruct",
             base_url="https://openrouter.ai/api/v1",
-            api_key=settings.OPENROUTER_API_KEY,
+            api_key=openrouter_key,
             temperature=0
         )
         fallbacks.append(openrouter_llm)
@@ -111,7 +117,11 @@ async def factory_supervisor(user_payload: dict):
         decision = structured_router.invoke(routing_prompt)
         
         # 4. Dynamically spin up the chosen agent chassis
-        worker = AgentChassis(profile_name=decision.destination)
+        worker = AgentChassis(
+            profile_name=decision.destination,
+            client_openrouter_key=client_openrouter_key,
+            client_cerebras_key=client_cerebras_key
+        )
         
         # 5. Execute the task using the chosen worker
         worker_output = worker.run(user_input)
@@ -174,10 +184,18 @@ def health_check():
     return {"status": "Factory Floor Functional", "tier_routing": "Azure/AWS Verified"}
 
 @app.post("/run/{agent_profile}", dependencies=[Depends(verify_api_key)])
-async def execute_agent(agent_profile: str, user_payload: dict):
+async def execute_agent(agent_profile: str, user_payload: dict, request: Request):
     try:
+        # Extract client headers if present
+        client_openrouter_key = request.headers.get("X-Client-OpenRouter-Key")
+        client_cerebras_key = request.headers.get("X-Client-Cerebras-Key")
+
         # Step 1: Instantly morph the chassis into the requested personality
-        factory_instance = AgentChassis(profile_name=agent_profile)
+        factory_instance = AgentChassis(
+            profile_name=agent_profile,
+            client_openrouter_key=client_openrouter_key,
+            client_cerebras_key=client_cerebras_key
+        )
 
         # Step 2: Extract system instructions and tool assignments
         persona = factory_instance.profile.get("personality") or {}
