@@ -1,6 +1,7 @@
 # Azure ACA Dynamic Sessions Python Execution
 import os
 import sys
+import io
 import subprocess
 from mcp.server.fastmcp import FastMCP
 
@@ -26,23 +27,30 @@ def execute_secure_python(code: str) -> str:
     
     else:
         # ---------------------------------------------------------
-        # LOCAL DEV FALLBACK: Run locally via subprocess
+        # LOCAL DEV FALLBACK: Run locally via exec
         # ---------------------------------------------------------
-        print("[Warning] No Azure Pool URL found. Running code locally.")
-        try:
-            # Execute the code passed by the LLM
-            result = subprocess.check_output(
-                [sys.executable, "-c", code], 
-                stderr=subprocess.STDOUT, 
-                text=True, 
-                timeout=10 # Prevent infinite loops
-            )
-            return result.strip() if result else "Code executed successfully with no output."
+        print("\n--- AGENT IS ATTEMPTING TO RUN THIS CODE ---")
+        print(code)
+        print("--------------------------------------------\n")
         
-        except subprocess.CalledProcessError as e:
-            return f"Execution Error:\n{e.output}"
-        except subprocess.TimeoutExpired:
-            return "Execution Error: Code timed out after 10 seconds."
+        # Redirect stdout to capture prints from the executed code
+        old_stdout = sys.stdout
+        redirected_output = sys.stdout = io.StringIO()
+        
+        try:
+            # Create a safe local execution context
+            local_vars = {}
+            exec(code, {"__builtins__": __import__("builtins")}, local_vars)
+            
+            sys.stdout = old_stdout
+            output = redirected_output.getvalue()
+            return output if output.strip() else "Code executed successfully with no stdout output."
+            
+        except Exception as e:
+            sys.stdout = old_stdout
+            error_msg = f"Local Execution Failed: {str(e)}"
+            print(f"❌ TOOL ERROR: {error_msg}")
+            return error_msg
 
 # Allow the server to be run directly for testing
 if __name__ == "__main__":

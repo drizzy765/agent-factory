@@ -48,7 +48,7 @@ class AgentChassis:
         
         if settings.CEREBRAS_API_KEY:
             cerebras_llm = ChatOpenAI(
-                model="llama3.1-70b",
+                model="llama-3.1-70b",
                 base_url="https://api.cerebras.ai/v1",
                 api_key=settings.CEREBRAS_API_KEY,
                 temperature=0
