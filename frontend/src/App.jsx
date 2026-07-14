@@ -1,6 +1,73 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SettingsModal from './SettingsModal';
 
+// Custom inline SVG icons for the landing page simulation widgets
+const Icons = {
+  Terminal: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="4 17 10 11 4 5"></polyline>
+      <line x1="12" y1="19" x2="20" y2="19"></line>
+    </svg>
+  ),
+  Layers: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+      <polyline points="2 17 12 22 22 17"></polyline>
+      <polyline points="2 12 12 17 22 12"></polyline>
+    </svg>
+  ),
+  Shield: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+    </svg>
+  ),
+  Cpu: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+      <rect x="9" y="9" width="6" height="6"></rect>
+      <line x1="9" y1="1" x2="9" y2="4"></line>
+      <line x1="15" y1="1" x2="15" y2="4"></line>
+      <line x1="9" y1="20" x2="9" y2="23"></line>
+      <line x1="15" y1="20" x2="15" y2="23"></line>
+      <line x1="20" y1="9" x2="23" y2="9"></line>
+      <line x1="20" y1="15" x2="23" y2="15"></line>
+      <line x1="1" y1="9" x2="4" y2="9"></line>
+      <line x1="1" y1="15" x2="4" y2="15"></line>
+    </svg>
+  ),
+  GitBranch: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="6" y1="3" x2="6" y2="15"></line>
+      <circle cx="18" cy="6" r="3"></circle>
+      <circle cx="6" cy="18" r="3"></circle>
+      <path d="M18 9a9 9 0 0 1-9 9"></path>
+    </svg>
+  ),
+  TrendingUp: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+      <polyline points="17 6 23 6 23 12"></polyline>
+    </svg>
+  ),
+  Play: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+      <polygon points="5 3 19 12 5 21 5 3"></polygon>
+    </svg>
+  ),
+  Activity: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+    </svg>
+  ),
+  Refresh: () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 4 23 10 17 10"></polyline>
+      <polyline points="1 20 1 14 7 14"></polyline>
+      <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+    </svg>
+  )
+};
+
 const AGENT_PROFILES = {
   supervisor: {
     name: "Supervisor Router (Auto)",
@@ -46,6 +113,182 @@ const INITIAL_MEMORY_INSIGHTS = [
 ];
 
 function App() {
+  // Navigation state switcher
+  const [currentView, setCurrentView] = useState('landing'); // 'landing' | 'portal'
+
+  // Command Menu states
+  const [isCmdMenuOpen, setIsCmdMenuOpen] = useState(false);
+  const [cmdSearch, setCmdSearch] = useState('');
+  const [selectedCmdIndex, setSelectedCmdIndex] = useState(0);
+
+  // Command Menu Keyboard Handlers
+  const filteredCommands = [
+    { id: 'portal', text: 'Launch Live Sandbox Console', desc: 'Connect to active agent chassis', action: () => setCurrentView('portal') },
+    { id: 'simulate_router', text: 'Run LangGraph Routing Simulator', desc: 'Verify multi agent node transitions', action: () => { setActiveTab('router'); runRouterSimulation(); } },
+    { id: 'simulate_failover', text: 'Test Outage Failover Cascade', desc: 'Simulate primary cluster timeouts', action: () => { setActiveTab('failover'); triggerFailoverSimulation(); } },
+    { id: 'simulate_rag', text: 'Execute Secure RAG Sanitizer', desc: 'Verify regex masking of strategy secrets', action: () => { setActiveTab('rag'); triggerRagSimulation(); } },
+    { id: 'docs', text: 'Scroll to System Specs Sheet', desc: 'Inspect local zero data leakage specs', action: () => { document.querySelector('.specs-section')?.scrollIntoView({ behavior: 'smooth' }); } }
+  ].filter(cmd => 
+    cmd.text.toLowerCase().includes(cmdSearch.toLowerCase()) || 
+    cmd.desc.toLowerCase().includes(cmdSearch.toLowerCase())
+  );
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Toggle menu: Cmd+K or Ctrl+K
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCmdMenuOpen(prev => !prev);
+        setCmdSearch('');
+        setSelectedCmdIndex(0);
+      }
+
+      if (!isCmdMenuOpen) return;
+
+      // Navigate menu
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedCmdIndex(prev => (prev + 1) % Math.max(1, filteredCommands.length));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedCmdIndex(prev => (prev - 1 + filteredCommands.length) % Math.max(1, filteredCommands.length));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredCommands[selectedCmdIndex]) {
+          filteredCommands[selectedCmdIndex].action();
+          setIsCmdMenuOpen(false);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setIsCmdMenuOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isCmdMenuOpen, selectedCmdIndex, filteredCommands]);
+
+  // Landing page simulation states
+  const [activeTab, setActiveTab] = useState('router');
+  const [mockTerminalLogs, setMockTerminalLogs] = useState([
+    { time: '17:16:45', tag: 'SYSTEM', text: 'Private Quant-AI Node: LAG-01 active.' },
+    { time: '17:16:46', tag: 'SECURITY', text: 'PII mask sandbox mounted in memory.' },
+    { time: '17:16:48', tag: 'ROUTER', text: 'Awaiting quantitative query payload...' }
+  ]);
+  const [routerQuery, setRouterQuery] = useState('risk');
+  const [activeNode, setActiveNode] = useState('idle');
+  const [openaiStatus, setOpenaiStatus] = useState('primary');
+  const [failoverLogsAdded, setFailoverLogsAdded] = useState(false);
+  const [ragSource, setRagSource] = useState('raw');
+  const [ragAnimating, setRagAnimating] = useState(false);
+
+  const mockTerminalEndRef = useRef(null);
+
+  const addMockLog = (tag, text) => {
+    const now = new Date();
+    const timeStr = now.toTimeString().split(' ')[0];
+    setMockTerminalLogs(prev => [...prev, { time: timeStr, tag, text }]);
+  };
+
+  const runRouterSimulation = () => {
+    if (activeNode !== 'idle') return;
+    setActiveNode('router');
+    addMockLog('ROUTER', `Analyzing query: "${
+      routerQuery === 'risk' ? 'Compute risk metrics for portfolio allocation weights' :
+      routerQuery === 'trading' ? 'Execute dynamic spread arbitrage logic on BTC/USD orderbooks' :
+      'Mask custom data string containing trading secrets'
+    }"`);
+    setTimeout(() => {
+      setActiveNode('agent');
+      const routedAgent = 
+        routerQuery === 'risk' ? 'Market Analyst Agent' :
+        routerQuery === 'trading' ? 'Arbitrage Execution Agent' :
+        'AI Trust Gateway';
+      addMockLog('EXEC', `Routing weight allocated to specialist: ${routedAgent}`);
+      setTimeout(() => {
+        setActiveNode('done');
+        addMockLog('SYSTEM', 'Query completed. Result payload compiled. Context cleared.');
+        setTimeout(() => {
+          setActiveNode('idle');
+        }, 1500);
+      }, 1500);
+    }, 1500);
+  };
+
+  const triggerFailoverSimulation = () => {
+    if (openaiStatus === 'offline') {
+      setOpenaiStatus('primary');
+      setFailoverLogsAdded(false);
+      addMockLog('SYSTEM', 'Primary provider (OpenAI API) restored. Default weights reset.');
+      return;
+    }
+    setOpenaiStatus('offline');
+    addMockLog('ROUTER', 'Outbound query dispatched to OpenAI API...');
+    setTimeout(() => {
+      addMockLog('FAILOVER', 'Error: OpenAI API timeout (> 500ms). Status: 504 Gateway Outage.');
+      addMockLog('FAILOVER', 'Cascading fallback sequence triggered immediately.');
+      setTimeout(() => {
+        addMockLog('FAILOVER', 'Rerouting payload to Secondary: Anthropic Claude API (Latency: 142ms).');
+        addMockLog('ROUTER', 'Handshake completed with secondary cluster. Execution resumed.');
+        setFailoverLogsAdded(true);
+      }, 1000);
+    }, 1000);
+  };
+
+  const triggerRagSimulation = () => {
+    if (ragAnimating) return;
+    setRagAnimating(true);
+    addMockLog('INGEST', 'Reading secure dataset file: strategy_secrets.json');
+    setTimeout(() => {
+      addMockLog('SECURITY', 'PII detector identified raw credentials/keys in context.');
+      addMockLog('SECURITY', 'Applying regex and semantic masks to target nodes...');
+      setTimeout(() => {
+        setRagSource('masked');
+        addMockLog('SECURITY', 'Sanitized context successfully. 2 secrets redacted.');
+        addMockLog('INGEST', 'Vector database embeddings stored locally.');
+        setRagAnimating(false);
+      }, 1200);
+    }, 1200);
+  };
+
+  const resetRag = () => {
+    setRagSource('raw');
+    addMockLog('SYSTEM', 'Reset secure sandbox cache.');
+  };
+
+  useEffect(() => {
+    if (currentView === 'landing') {
+      mockTerminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [mockTerminalLogs, currentView]);
+
+  useEffect(() => {
+    const rootEl = document.getElementById('root');
+    if (currentView === 'landing') {
+      document.body.style.overflow = 'auto';
+      document.body.style.height = 'auto';
+      if (rootEl) {
+        rootEl.style.height = 'auto';
+        rootEl.style.overflow = 'auto';
+      }
+    } else {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100vh';
+      if (rootEl) {
+        rootEl.style.height = '100vh';
+        rootEl.style.overflow = 'hidden';
+      }
+    }
+    return () => {
+      document.body.style.overflow = 'hidden';
+      document.body.style.height = '100vh';
+      if (rootEl) {
+        rootEl.style.height = '100vh';
+        rootEl.style.overflow = 'hidden';
+      }
+    };
+  }, [currentView]);
+
   // Config state
   const [backendUrl, setBackendUrl] = useState("http://127.0.0.1:8000");
   const [apiKey, setApiKey] = useState("sk_factory_test_12345");
@@ -573,6 +816,444 @@ function App() {
     });
   };
 
+  if (currentView === 'landing') {
+    return (
+      <div className="app-container" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <div className="grid-overlay"></div>
+
+        {/* Landing Header Bar with Search Bar Trigger & View Switcher */}
+        <header className="cyber-header" style={{ position: 'sticky', top: 0, zIndex: 100, backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)' }}>
+          <div className="header-brand">
+            <div className="brand-glyph">Φ</div>
+            <div className="brand-text-wrapper">
+              <span className="brand-main">
+                AGORO // QUANT.AI <span style={{ color: 'var(--accent-teal)', fontSize: '10px' }}>// ARCHITECTURE_PORTAL</span>
+              </span>
+              <span className="brand-sub">Private AI Infrastructure for Quantitative Finance</span>
+            </div>
+          </div>
+
+          <div className="header-meta" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            {/* Command search trigger bar */}
+            <div className="cmd-search-trigger" onClick={() => setIsCmdMenuOpen(true)}>
+              <span>Search commands</span>
+              <kbd>⌘K</kbd>
+            </div>
+
+            <button 
+              className="toggle-right-btn active"
+              onClick={() => {
+                setCurrentView('portal');
+                addConsoleLog('info', 'Opened live Factory Console portal view.');
+              }}
+              style={{ borderColor: 'var(--accent-teal)', color: 'var(--accent-teal)', boxShadow: '0 0 8px var(--accent-teal-glow)' }}
+            >
+              [ ENTER FACTORY CONSOLE ]
+            </button>
+          </div>
+        </header>
+
+        <main style={{ position: 'relative', zIndex: 10, flexGrow: 1 }}>
+          {/* Hero Section */}
+          <section className="hero-section">
+            <div className="hero-tag">ENTERPRISE PRIVATE ALPHA</div>
+            <h1 className="hero-title gradient-heading">
+              Private AI Infrastructure for Quantitative Finance
+            </h1>
+            <p className="hero-subtitle">
+              Local first LangGraph architecture with triple redundant LLM failovers and secure RAG.
+            </p>
+
+            {/* Centerpiece Video Section */}
+            <div className="video-centerpiece">
+              <div className="video-border-effect"></div>
+              <div className="video-panel-header">
+                <div className="video-window-dots">
+                  <div className="window-dot active"></div>
+                  <div className="window-dot"></div>
+                  <div className="window-dot"></div>
+                </div>
+                <span>ORCHESTRATION DEMO // CONFIDENTIAL DIRECTIVE</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <span className="status-dot pulsing" style={{ width: '5px', height: '5px', backgroundColor: 'var(--accent-emerald)', boxShadow: '0 0 8px var(--accent-emerald)' }}></span>
+                  <span style={{ fontSize: '0.65rem' }}>LIVE FEED</span>
+                </div>
+              </div>
+              
+              {/* Exactly embedding the required Loom code */}
+              <div style={{ position: 'relative', paddingBottom: '56.25%', height: 0, border: '1px solid #26262B', borderBottomLeftRadius: '8px', borderBottomRightRadius: '8px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }}>
+                <iframe 
+                  src="https://www.loom.com/embed/8757d0480303459da7678c5c96433110" 
+                  frameBorder="0" 
+                  webkitallowfullscreen="true" 
+                  mozallowfullscreen="true" 
+                  allowFullScreen 
+                  style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}
+                ></iframe>
+              </div>
+            </div>
+
+            {/* CTA Section */}
+            <div className="cta-container">
+              <a href="#" className="cta-button corner-borders">
+                [ Initiate Deployment Strategy Call ]
+              </a>
+              <span className="cta-subtext">
+                Direct connection to systems architect. Or,{' '}
+                <a className="cta-link-secondary" onClick={() => {
+                  setCurrentView('portal');
+                  addConsoleLog('info', 'Opened live Factory Console portal view.');
+                }}>
+                  [ Enter Sandbox Console ]
+                </a>{' '}
+                to run live queries.
+              </span>
+            </div>
+          </section>
+
+          {/* Interactive Simulation Section */}
+          <section className="dashboard-grid">
+            <div className="grid-header-meta">SYSTEM DEPLOYMENT SIMULATOR // VERIFICATION SUITE</div>
+            <h2 className="grid-section-title">
+              Interactive Architecture Validation
+            </h2>
+
+            <div className="features-layout">
+              {/* Interactive Workspace Card */}
+              <div className="workspace-card corner-borders">
+                <div className="workspace-header">
+                  <div className="workspace-tabs">
+                    <button 
+                      className={`workspace-tab ${activeTab === 'router' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('router'); addMockLog('SYSTEM', 'Workspace: LangGraph Routing active.'); }}
+                    >
+                      LangGraph Router
+                    </button>
+                    <button 
+                      className={`workspace-tab ${activeTab === 'failover' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('failover'); addMockLog('SYSTEM', 'Workspace: Redundant Failovers active.'); }}
+                    >
+                      Failover Cascade
+                    </button>
+                    <button 
+                      className={`workspace-tab ${activeTab === 'rag' ? 'active' : ''}`}
+                      onClick={() => { setActiveTab('rag'); addMockLog('SYSTEM', 'Workspace: Secure RAG sanitization active.'); }}
+                    >
+                      Secure Ingestion
+                    </button>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                    <Icons.Activity />
+                    <span>SIM_SYS // V2.6</span>
+                  </div>
+                </div>
+
+                <div className="workspace-content">
+                  {activeTab === 'router' && (
+                    <div className="langgraph-viz">
+                      <div className="graph-nodes">
+                        <div className="graph-connector active"></div>
+                        
+                        <div className="graph-node active">
+                          <span className="node-label">Prompt</span>
+                          <span className="node-status">INPUT</span>
+                        </div>
+
+                        <div className={`graph-node ${activeNode === 'router' ? 'active' : ''}`}>
+                          <span className="node-label">LangGraph</span>
+                          <span className="node-status">{activeNode === 'router' ? 'ROUTING...' : 'SUPERVISOR'}</span>
+                        </div>
+
+                        <div className={`graph-node ${activeNode === 'agent' ? 'active' : ''}`}>
+                          <span className="node-label">Specialist</span>
+                          <span className="node-status">
+                            {activeNode === 'agent' ? (
+                              routerQuery === 'risk' ? 'MARKET_ANALYST' :
+                              routerQuery === 'trading' ? 'ARBITRAGE' : 'AI_TRUST'
+                            ) : 'STANDBY'}
+                          </span>
+                        </div>
+
+                        <div className={`graph-node ${activeNode === 'done' ? 'active' : ''}`}>
+                          <span className="node-label">Output</span>
+                          <span className="node-status">COMPILED</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: '100%', maxWidth: '400px', margin: '0 auto' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button 
+                            className={`rag-option ${routerQuery === 'risk' ? 'active' : ''}`}
+                            onClick={() => setRouterQuery('risk')}
+                          >
+                            Risk Query
+                          </button>
+                          <button 
+                            className={`rag-option ${routerQuery === 'trading' ? 'active' : ''}`}
+                            onClick={() => setRouterQuery('trading')}
+                          >
+                            Arbitrage Payload
+                          </button>
+                          <button 
+                            className={`rag-option ${routerQuery === 'clean' ? 'active' : ''}`}
+                            onClick={() => setRouterQuery('clean')}
+                          >
+                            PII Target String
+                          </button>
+                        </div>
+
+                        <button className="simulate-btn" onClick={runRouterSimulation} disabled={activeNode !== 'idle'}>
+                          <Icons.Play />
+                          <span>{activeNode !== 'idle' ? 'Processing Transaction...' : 'Run Graph Simulation'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeTab === 'failover' && (
+                    <div className="failover-matrix">
+                      <div className={`matrix-row ${openaiStatus === 'primary' ? 'active' : 'disabled'}`}>
+                        <div className="provider-info">
+                          <span className="provider-rank">01</span>
+                          <div>
+                            <span className="provider-name">OpenAI API Cluster</span>
+                            <span className="provider-type"> (GPT-4o API)</span>
+                          </div>
+                        </div>
+                        <div className="latency-meter">
+                          <span className="latency-val">{openaiStatus === 'primary' ? '128ms' : 'TIMEOUT'}</span>
+                          <span className={`status-badge ${openaiStatus === 'primary' ? 'primary' : 'offline'}`}>
+                            {openaiStatus === 'primary' ? 'PRIMARY ACTIVE' : 'OFFLINE (504)'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className={`matrix-row ${openaiStatus === 'offline' && !failoverLogsAdded ? 'disabled' : (openaiStatus === 'offline' && failoverLogsAdded ? 'active' : '')}`}>
+                        <div className="provider-info">
+                          <span className="provider-rank">02</span>
+                          <div>
+                            <span className="provider-name">Anthropic Claude</span>
+                            <span className="provider-type"> (3.5 Sonnet)</span>
+                          </div>
+                        </div>
+                        <div className="latency-meter">
+                          <span className="latency-val">{openaiStatus === 'offline' && failoverLogsAdded ? '142ms' : '150ms'}</span>
+                          <span className={`status-badge ${openaiStatus === 'offline' && failoverLogsAdded ? 'fallback' : ''}`} style={{ border: openaiStatus === 'offline' && failoverLogsAdded ? '' : '1px solid var(--border-steel)', color: openaiStatus === 'offline' && failoverLogsAdded ? '' : 'var(--text-secondary)' }}>
+                            {openaiStatus === 'offline' && failoverLogsAdded ? 'ROUTING FALLBACK' : 'STANDBY'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="matrix-row">
+                        <div className="provider-info">
+                          <span className="provider-rank">03</span>
+                          <div>
+                            <span className="provider-name">Local LLM Node</span>
+                            <span className="provider-type"> (DeepSeek / Llama 3)</span>
+                          </div>
+                        </div>
+                        <div className="latency-meter">
+                          <span className="latency-val">12ms</span>
+                          <span className="status-badge" style={{ border: '1px solid var(--border-steel)', color: 'var(--text-secondary)' }}>
+                            STANDBY (LOCAL)
+                          </span>
+                        </div>
+                      </div>
+
+                      <button className="simulate-btn" onClick={triggerFailoverSimulation}>
+                        <Icons.Refresh />
+                        <span>{openaiStatus === 'primary' ? 'Simulate Primary Outage' : 'Restore Primary Gateway'}</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {activeTab === 'rag' && (
+                    <div className="rag-sim">
+                      <div className="rag-flow">
+                        <div className="rag-box">
+                          <div className="rag-box-title">RAW DATA INGEST</div>
+                          <div className="rag-box-body">
+                            {`{\n  "strategy": "Arbitrage-A",\n  "api_key": "sk-live-55a1b2c3d4",\n  "database_ip": "192.168.1.100",\n  "weights": [0.4, 0.6]\n}`}
+                          </div>
+                        </div>
+                        
+                        <div className={`rag-arrow ${ragAnimating ? 'active' : ''}`}>
+                          <span>→</span>
+                        </div>
+
+                        <div className="rag-box">
+                          <div className="rag-box-title">SANITIZED FOR VECTOR EMBEDDING</div>
+                          <div className="rag-box-body">
+                            {ragSource === 'raw' ? (
+                              <span style={{ color: 'var(--text-secondary)' }}>Awaiting ingestion run...</span>
+                            ) : (
+                              <span style={{ color: 'var(--accent-teal)' }}>
+                                {`{\n  "strategy": "Arbitrage-A",\n  "api_key": "[REDACTED_SECRET]",\n  "database_ip": "[REDACTED_IP]",\n  "weights": [0.4, 0.6]\n}`}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button className="simulate-btn" onClick={triggerRagSimulation} disabled={ragAnimating}>
+                          <Icons.Shield />
+                          <span>{ragAnimating ? 'Sanitizing context...' : 'Verify Secure RAG Ingestion'}</span>
+                        </button>
+                        {ragSource === 'masked' && (
+                          <button className="simulate-btn" style={{ borderColor: 'rgba(239,68,68,0.3)', color: '#EF4444' }} onClick={resetRag}>
+                            Reset Sandbox
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Diagnostic Terminal Card */}
+              <div className="workspace-card corner-borders" style={{ gridColumn: 'span 5' }}>
+                <div className="workspace-header">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Icons.Terminal />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-raw)' }}>DIAGNOSTIC CORE LOGS</span>
+                  </div>
+                  <span className="status-dot pulsing"></span>
+                </div>
+                <div className="workspace-content" style={{ padding: '1rem' }}>
+                  <div className="terminal-block">
+                    {mockTerminalLogs.map((log, index) => (
+                      <div className="terminal-line" key={index}>
+                        <span className="terminal-time">[{log.time}]</span>
+                        <span className={`terminal-tag ${log.tag === 'FAILOVER' ? 'failover' : log.tag === 'SECURITY' ? 'error' : ''}`}>
+                          {log.tag}:
+                        </span>
+                        <span className="terminal-text">{log.text}</span>
+                      </div>
+                    ))}
+                    <div ref={mockTerminalEndRef} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Specs / Features Grid */}
+          <section className="specs-section">
+            <div className="grid-header-meta">ARCHITECTURAL DETAILS // SPECS SHEET</div>
+            <h2 className="grid-section-title">
+              Engineered For Zero Data Leakage
+            </h2>
+
+            <div className="specs-grid">
+              <div className="spec-item corner-borders">
+                <div className="spec-icon">
+                  <Icons.GitBranch />
+                </div>
+                <h3 className="spec-title">LangGraph Agentic Routing</h3>
+                <p className="spec-desc">
+                  Orchestrate multi step reasoning cycles locally. Automatically distribute specialized tasks across a dynamic DAG, keeping calculation context intact.
+                </p>
+                <ul className="spec-list">
+                  <li className="spec-bullet">Local python executor sandbox</li>
+                  <li className="spec-bullet">Stateful multi agent feedback loops</li>
+                  <li className="spec-bullet">Prebuilt quant workflow routers</li>
+                </ul>
+              </div>
+
+              <div className="spec-item corner-borders">
+                <div className="spec-icon">
+                  <Icons.Layers />
+                </div>
+                <h3 className="spec-title">Triple Redundant Pipeline</h3>
+                <p className="spec-desc">
+                  Uncompromising availability. The network automatically switches execution pipelines if primary API limits or provider outages occur.
+                </p>
+                <ul className="spec-list">
+                  <li className="spec-bullet">Automatic retry with fallback weights</li>
+                  <li className="spec-bullet">DeepSeek & local Llama backup models</li>
+                  <li className="spec-bullet">Context restoration on switchover</li>
+                </ul>
+              </div>
+
+              <div className="spec-item corner-borders">
+                <div className="spec-icon">
+                  <Icons.Shield />
+                </div>
+                <h3 className="spec-title">Secure Local RAG</h3>
+                <p className="spec-desc">
+                  Embed your private strategy files locally. Sensitive information and trading signals are masked before any API dispatch, ensuring zero IP leakage.
+                </p>
+                <ul className="spec-list">
+                  <li className="spec-bullet">Local vector database generation</li>
+                  <li className="spec-bullet">PII filtering and key redaction</li>
+                  <li className="spec-bullet">Zero external training on your code</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          {/* Strict Monospace Footer */}
+          <footer className="cyber-footer">
+            <p className="footer-text">
+              Engineered by{' '}
+              <a href="#" className="footer-attribution">
+                Agoro Oluwatimilehin Teslim
+              </a>{' '}
+              | Quantitative Data Scientist & ML Engineer | Lagos, Nigeria
+            </p>
+          </footer>
+        </main>
+
+        {/* Command Menu Modal Dialog */}
+        {isCmdMenuOpen && (
+          <div className="cmd-menu-overlay" onClick={() => setIsCmdMenuOpen(false)}>
+            <div className="cmd-menu-content" onClick={e => e.stopPropagation()}>
+              <div className="cmd-menu-search-wrapper">
+                <div className="cmd-menu-search-icon">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                </div>
+                <input 
+                  type="text" 
+                  className="cmd-menu-input" 
+                  placeholder="Search architecture commands..." 
+                  value={cmdSearch}
+                  onChange={e => { setCmdSearch(e.target.value); setSelectedCmdIndex(0); }}
+                  autoFocus
+                />
+                <span className="cmd-menu-esc">ESC</span>
+              </div>
+              <div className="cmd-menu-list">
+                {filteredCommands.length > 0 ? (
+                  filteredCommands.map((cmd, idx) => (
+                    <div 
+                      key={cmd.id} 
+                      className={`cmd-menu-item ${idx === selectedCmdIndex ? 'active' : ''}`}
+                      onClick={() => {
+                        cmd.action();
+                        setIsCmdMenuOpen(false);
+                      }}
+                    >
+                      <span className="cmd-menu-item-text">{cmd.text}</span>
+                      <span className="cmd-menu-item-desc">{cmd.desc}</span>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ padding: '20px', color: 'var(--text-secondary)', fontSize: '12px', textAlign: 'center' }}>
+                    No matching commands found.
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Cyber Industrial Header */}
@@ -581,7 +1262,7 @@ function App() {
           <div className="brand-glyph">Φ</div>
           <div className="brand-text-wrapper">
             <span className="brand-main">
-              DATA-DENSE PRO <span style={{ color: 'var(--accent-teal)', fontSize: '10px' }}>// FACTORY_CONSOLE</span>
+              AGORO // QUANT.AI <span style={{ color: 'var(--accent-teal)', fontSize: '10px' }}>// FACTORY_CONSOLE</span>
             </span>
             <span className="brand-sub">Multi-Agent Chassis Environment</span>
           </div>

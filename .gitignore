@@ -157,3 +157,6 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# Confidential RAG Database / Strategy Memos
+data/
