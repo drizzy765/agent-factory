@@ -290,7 +290,7 @@ function App() {
   }, [currentView]);
 
   // Config state
-  const [backendUrl, setBackendUrl] = useState("http://127.0.0.1:8000");
+  const [backendUrl, setBackendUrl] = useState(import.meta.env.VITE_API_URL || "https://agent-factory-2.onrender.com");
   const [apiKey, setApiKey] = useState("sk_factory_test_12345");
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -1277,7 +1277,7 @@ function App() {
               className="meta-input"
               value={backendUrl}
               onChange={(e) => setBackendUrl(e.target.value)}
-              placeholder="http://127.0.0.1:8000"
+              placeholder="https://agent-factory-2.onrender.com"
             />
           </div>
 
