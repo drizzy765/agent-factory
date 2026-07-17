@@ -2,7 +2,6 @@ import yaml
 import importlib
 from typing import Dict, Any
 from langchain_openai import ChatOpenAI
-from langchain_aws import ChatBedrock
 from langchain_groq import ChatGroq
 from langchain_core.tools import StructuredTool
 from langgraph.prebuilt import create_react_agent
