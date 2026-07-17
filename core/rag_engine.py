@@ -1,6 +1,6 @@
 import os
 from langchain_community.vectorstores import Chroma
-from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain_cohere import CohereEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
@@ -9,8 +9,11 @@ CHROMA_DB_DIR = os.path.abspath(
     os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "chroma_db")
 )
 
-# Initialize Hugging Face local embeddings
-embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+# Offloads vectorization to Cohere to stay within the 512MB RAM limit
+embeddings = CohereEmbeddings(
+    model="embed-english-v3.0", 
+    cohere_api_key=os.getenv("COHERE_API_KEY")
+)
 
 # Global vector store instance, lazily initialized
 _vector_store = None

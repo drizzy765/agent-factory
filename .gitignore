@@ -160,3 +160,7 @@ Thumbs.db
 
 # Confidential RAG Database / Strategy Memos
 data/
+
+
+#Ignore cursor AI rules
+.cursor\rules\codacy.mdc
