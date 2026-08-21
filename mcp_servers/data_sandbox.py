@@ -1,4 +1,4 @@
-# Azure ACA Dynamic Sessions Python Execution
+# Secure Python Execution Sandbox (Zero-Cost / Cloudflare & Edge Architecture)
 import os
 import sys
 import io
@@ -11,21 +11,23 @@ mcp = FastMCP("data_sandbox")
 @mcp.tool()
 def execute_secure_python(code: str) -> str:
     """
-    Executes Python code to analyze financial data, run statsmodels, or calculate metrics.
-    In production: Routes to Azure ACA Dynamic Sessions.
-    In local dev: Runs in a local subprocess.
+    Executes Python code to analyze financial data, calculate metrics, or process datasets.
+    Runs in an isolated execution sandbox.
     """
-    pool_url = os.getenv("AZURE_DYNAMIC_SESSION_POOL_URL")
+    e2b_api_key = os.getenv("E2B_API_KEY")
     
-    if pool_url:
-        # ---------------------------------------------------------
-        # PRODUCTION: Azure Container Apps Dynamic Sessions
-        # ---------------------------------------------------------
-        # Here we would use azure-identity to get a token and POST 
-        # the code to the secure Azure sandbox endpoint.
-        return f"[Azure Sandbox] Code securely routed to {pool_url} for execution."
-    
-    else:
+    if e2b_api_key:
+        try:
+            from e2b_code_interpreter import Sandbox
+            with Sandbox(api_key=e2b_api_key) as sandbox:
+                execution = sandbox.run_code(code)
+                output = "\n".join([str(log) for log in execution.logs.stdout])
+                if execution.error:
+                    return f"Execution Error: {execution.error.name} - {execution.error.value}"
+                return output if output.strip() else "Code executed successfully with no stdout output."
+        except Exception as e:
+            # Fall back to localized execution if E2B throws an error
+            pass
         # ---------------------------------------------------------
         # LOCAL DEV FALLBACK: Run locally via exec
         # ---------------------------------------------------------

@@ -61,7 +61,7 @@ async def factory_supervisor(user_payload: dict, request: Request):
     
     # 1. Initialize robust LLM routing with fallbacks for supervisor
     primary_llm = ChatGroq(
-        model="llama-3.1-8b-instant",
+        model="llama-3.3-70b-versatile",
         temperature=0,
         api_key=settings.GROQ_API_KEY,
         max_retries=0
@@ -181,7 +181,7 @@ async def upload_document(file: UploadFile = File(...)):
 
 @app.get("/health")
 def health_check():
-    return {"status": "Factory Floor Functional", "tier_routing": "Azure/AWS Verified"}
+    return {"status": "Factory Floor Functional", "tier_routing": "Cloudflare/Multi-Cloud Verified"}
 
 @app.post("/run/{agent_profile}", dependencies=[Depends(verify_api_key)])
 async def execute_agent(agent_profile: str, user_payload: dict, request: Request):
